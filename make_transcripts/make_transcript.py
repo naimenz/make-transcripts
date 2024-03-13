@@ -113,7 +113,9 @@ def prep_file(file_path) -> Path:
     # write to a temp file with a uuid name
     name = f"audio_{uuid.uuid4()}"
     path = Path(f"data/tmp/{name}.wav")
-    (ffmpeg.input(file_path).output(str(path), format="s16le", acodec="pcm_s16le", ac=1, ar="16k"))
+    stream = ffmpeg.input(file_path)
+    stream = ffmpeg.output(stream, str(path))
+    ffmpeg.run(stream)
     return path
 
 
@@ -202,19 +204,15 @@ def build_html(original_audio_path: Path, groups, audio_title: str):
 
         html.append(postS)
 
-        with open(f"capspeaker.txt", "w", encoding="utf-8") as file:
+        with open(f"{audio_title}.txt", "w", encoding="utf-8") as file:
             s = "".join(txt)
             file.write(s)
-            print("captions saved to capspeaker.txt:")
-            print(s + "\n")
 
         with open(
-            f"capspeaker.html", "w", encoding="utf-8"
-        ) as file:  # TODO: proper html embed tag when video/audio from file
+            f"data/out/{audio_title}.html", "w", encoding="utf-8"
+        ) as file:  
             s = "".join(html)
             file.write(s)
-            print("captions saved to capspeaker.html:")
-            print(s + "\n")
 
 
 def timeStr(t):
