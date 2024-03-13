@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "make-transcripts"
+version = "0.1.0"
+description = ""
+authors = ["Ian McKenzie <ianmck98@gmail.com>"]
+readme = "README.md"
+packages = [{include = "make_transcripts"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ffmpeg-python = "^0.2.0"
+fire = "^0.6.0"
+pyannote-audio = "^3.1.1"
+python-dotenv = "^1.0.1"
+pydub = "^0.25.1"
+speechbrain = "^1.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
