@@ -2800,13 +2800,13 @@ test = ["pytest"]
 
 [[package]]
 name = "speechbrain"
-version = "1.0.0"
+version = "0.5.16"
 description = "All-in-one speech toolkit in pure Python and Pytorch"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "speechbrain-1.0.0-py3-none-any.whl", hash = "sha256:3f163958fc5a6dc05851700e8cee9d828110fbb7a8defec911f25849ce33f45f"},
-    {file = "speechbrain-1.0.0.tar.gz", hash = "sha256:f44797a23e0351f6ebf5ffd323bf44857431b2ffa55ec8e0c9f66e2ac6f6cea7"},
+    {file = "speechbrain-0.5.16-py3-none-any.whl", hash = "sha256:3b400b077d5b9c260c54ceadd4a1ae8e06d6f0b768e8e552bc0448b816f9050d"},
+    {file = "speechbrain-0.5.16.tar.gz", hash = "sha256:cfbf6176da8879b541e1a2d1342d43806e82d0ef55604c2f38e21a5027a2eecb"},
 ]
 
 [package.dependencies]
@@ -3350,4 +3350,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "98aee1b5fc7084b8ee7a5db6d5b56a6b64e36ce8b6364ff80508f984db08801c"
+content-hash = "e5955c9d3e0e12e8f0334d0be9b9d84a9d9c279952afbdb1d06ae36ccb602b51"
