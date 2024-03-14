@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+import shutil
 import whisper
 import json
-import re
 from pathlib import Path
 import torch
 import fire
@@ -15,9 +16,26 @@ from pydub import AudioSegment
 def main(file_path: str):
     audio_path = prep_file(file_path)
     dz_path = make_diarization(audio_path)
-    groups, group_paths = postprocess_dz(audio_path, dz_path)
-    caption_paths = run_whisper_on_audio_files(group_paths)
-    build_html(audio_path, groups, audio_path.stem)
+    segments, segment_paths = postprocess_dz(audio_path, dz_path)
+    run_whisper_on_audio_files(segment_paths)
+    build_html(audio_path, segments, Path(file_path).stem)
+
+
+@dataclass
+class DiarizationSegment:
+    start: float
+    end: float
+    speaker: str
+    segment_id: str
+
+    @classmethod
+    def from_string(cls, string: str):
+        chunks = string.split()
+        start = millisec(chunks[1])
+        end = millisec(chunks[3].strip("]"))
+        segment_id = chunks[4]
+        speaker = chunks[5]
+        return cls(start, end, speaker, segment_id)
 
 
 def make_diarization(file_path: Path):
@@ -35,53 +53,23 @@ def make_diarization(file_path: Path):
 
 
 def postprocess_dz(audio_path: Path, dz_path: Path) -> tuple[list, list[Path]]:
-    groups = group_dz_segments(dz_path)
-    group_paths = save_groups(audio_path, groups)
-    return groups, group_paths
+    # segments = group_dz_segments(dz_path)
+    dz_data = open(dz_path).read().splitlines()
+    segments = [DiarizationSegment.from_string(dz) for dz in dz_data]
+    segment_paths = save_segments(audio_path, segments)
+    return segments, segment_paths
 
 
-def save_groups(audio_path: Path, groups) -> list[Path]:
+def save_segments(audio_path: Path, segments: list[DiarizationSegment]) -> list[Path]:
     """Save the audio part corresponding to each diarization group."""
     audio = AudioSegment.from_wav(audio_path)
-    gidx = -1
-    group_paths = []
-    for g in groups:
-        start = re.findall("[0-9]+:[0-9]+:[0-9]+\.[0-9]+", string=g[0])[0]
-        end = re.findall("[0-9]+:[0-9]+:[0-9]+\.[0-9]+", string=g[-1])[1]
-        start = millisec(start)  # - spacermilli
-        end = millisec(end)  # - spacermilli
-        gidx += 1
-        group_path = Path(f"data/tmp/{str(gidx)}.wav")
-        audio[start:end].export(group_path, format="wav")
-        group_paths.append(group_path)
-    return group_paths
-
-
-def group_dz_segments(file_path: Path):
-    """Grouping the diarization segments according to the speaker."""
-    dzs = open(file_path).read().splitlines()
-
-    groups = []
-    g = []
-    lastend = 0
-
-    for d in dzs:
-        if g and (g[0].split()[-1] != d.split()[-1]):  # same speaker
-            groups.append(g)
-            g = []
-
-        g.append(d)
-
-        end = re.findall("[0-9]+:[0-9]+:[0-9]+\.[0-9]+", string=d)[1]
-        end = millisec(end)
-        if lastend > end:  # segment engulfed by a previous segment
-            groups.append(g)
-            g = []
-        else:
-            lastend = end
-        if g:
-            groups.append(g)
-    return groups
+    paths = []
+    for segment in segments:
+        segment_path = Path(f"data/tmp/segment_{segment.segment_id}.wav")
+        start, end = segment.start, segment.end
+        audio[start:end].export(segment_path, format="wav")
+        paths.append(segment_path)
+    return paths
 
 
 def run_whisper_on_audio_files(group_paths: list[Path]) -> list[Path]:
@@ -132,16 +120,17 @@ def millisec(timeStr):
     return s
 
 
-def build_html(original_audio_path: Path, groups, audio_title: str):
-    groups = [dict.fromkeys(g).keys() for g in groups]
+def build_html(original_audio_path: Path, segments: list[DiarizationSegment], audio_title: str):
     out_dir = Path(f"data/out/{audio_title}")
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(original_audio_path, f"data/out/{audio_title}/audio.wav")
+    # get just the file name relative to data/out
     speakers = {
-        "SPEAKER_00": ("Speaker 1", "#e1ffc7", "darkgreen"),
+        "SPEAKER_00": ("Speaker 1", "white", "darkgreen"),
         "SPEAKER_01": ("Speaker 2", "white", "darkorange"),
-        "SPEAKER_02": ("Speaker 3", "#e1ffc7", "blue"),
-        "SPEAKER_03": ("Speaker 4", "white", "red"),
+        "SPEAKER_02": ("Speaker 3", "white", "darkblue"),
+        "SPEAKER_03": ("Speaker 4", "white", "darkred"),
+        "SPEAKER_03": ("Speaker 4", "white", "darkmagenta"),
     }
     def_boxclr = "white"
     def_spkrclr = "orange"
@@ -162,19 +151,14 @@ def build_html(original_audio_path: Path, groups, audio_title: str):
 
     html = list(preS)
     txt = list("")
-    gidx = -1
-    for g in groups:
-        shift = re.findall("[0-9]+:[0-9]+:[0-9]+\.[0-9]+", string=g[0])[0]
-        shift = millisec(shift)
-        shift = max(shift, 0)
+    for segment in segments:
+        shift = segment.start
 
-        gidx += 1
-
-        caption_path = Path(f"data/tmp/{gidx}.json")
+        caption_path = Path(f"data/tmp/segment_{segment.segment_id}.json")
         captions = json.load(open(caption_path))["segments"]
 
         if captions:
-            speaker = g[0].split()[-1]
+            speaker = segment.speaker
             boxclr = def_boxclr
             spkrclr = def_spkrclr
             if speaker in speakers:
@@ -208,15 +192,13 @@ def build_html(original_audio_path: Path, groups, audio_title: str):
 
         html.append(postS)
 
-        with open(out_dir / "raw_transcript.txt", "w", encoding="utf-8") as file:
-            s = "".join(txt)
-            file.write(s)
+    with open(out_dir / "raw_transcript.txt", "w", encoding="utf-8") as file:
+        s = "".join(txt)
+        file.write(s)
 
-        with open(
-            out_dir / "transcript.html", "w", encoding="utf-8"
-        ) as file:  
-            s = "".join(html)
-            file.write(s)
+    with open(out_dir / "transcript.html", "w", encoding="utf-8") as file:
+        s = "".join(html)
+        file.write(s)
 
 
 def timeStr(t):
