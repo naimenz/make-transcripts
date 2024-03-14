@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "make_transcripts"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.9"
 ffmpeg-python = "^0.2.0"
 fire = "^0.6.0"
 pyannote-audio = "^3.1.1"

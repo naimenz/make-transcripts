@@ -98,7 +98,7 @@ def run_whisper_on_audio_files(group_paths: list[Path]) -> list[Path]:
 
 def load_whisper_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = whisper.load_model("large", device=device)
+    model = whisper.load_model("medium", device=device)
     return model
 
 
@@ -133,6 +133,10 @@ def millisec(timeStr):
 
 
 def build_html(original_audio_path: Path, groups, audio_title: str):
+    groups = [dict.fromkeys(g).keys() for g in groups]
+    out_dir = Path(f"data/out/{audio_title}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(original_audio_path, f"data/out/{audio_title}/audio.wav")
     speakers = {
         "SPEAKER_00": ("Speaker 1", "#e1ffc7", "darkgreen"),
         "SPEAKER_01": ("Speaker 2", "white", "darkorange"),
@@ -151,7 +155,7 @@ def build_html(original_audio_path: Path, groups, audio_title: str):
     preS += (
         "\n\n<body>\n\t<h2>"
         + audio_title
-        + f'</h2>\n\t<i>Click on a part of the transcription, to jump to its portion of audio, and get an anchor to it in the address\n\t\tbar<br><br></i>\n\t<div id="player-div">\n\t\t<div id="player">\n\t\t\t<audio controls="controls" id="audio_player">\n\t\t\t\t<source src={str(original_audio_path)} />\n\t\t\t</audio>\n\t\t</div>\n\t\t<div><label for="autoscroll">auto-scroll: </label>\n\t\t\t<input type="checkbox" id="autoscroll" checked>\n\t\t</div>\n\t</div>\n'
+        + f'</h2>\n\t<i>Click on a part of the transcription, to jump to its portion of audio, and get an anchor to it in the address\n\t\tbar<br><br></i>\n\t<div id="player-div">\n\t\t<div id="player">\n\t\t\t<audio controls="controls" id="audio_player">\n\t\t\t\t<source src=audio.wav />\n\t\t\t</audio>\n\t\t</div>\n\t\t<div><label for="autoscroll">auto-scroll: </label>\n\t\t\t<input type="checkbox" id="autoscroll" checked>\n\t\t</div>\n\t</div>\n'
     )
 
     postS = "\t</body>\n</html>"
@@ -204,12 +208,12 @@ def build_html(original_audio_path: Path, groups, audio_title: str):
 
         html.append(postS)
 
-        with open(f"{audio_title}.txt", "w", encoding="utf-8") as file:
+        with open(out_dir / "raw_transcript.txt", "w", encoding="utf-8") as file:
             s = "".join(txt)
             file.write(s)
 
         with open(
-            f"data/out/{audio_title}.html", "w", encoding="utf-8"
+            out_dir / "transcript.html", "w", encoding="utf-8"
         ) as file:  
             s = "".join(html)
             file.write(s)
