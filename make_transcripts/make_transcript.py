@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import shutil
+from tqdm import tqdm
 import whisper
 import json
 from pathlib import Path
@@ -75,7 +76,7 @@ def save_segments(audio_path: Path, segments: list[DiarizationSegment]) -> list[
 def run_whisper_on_audio_files(group_paths: list[Path]) -> list[Path]:
     model = load_whisper_model()
     text_paths = []
-    for audio_path in group_paths:
+    for audio_path in tqdm(group_paths):
         out_path = audio_path.with_suffix(".json")
         result = model.transcribe(audio=str(audio_path), language="en", word_timestamps=True)
         with out_path.open("w") as outfile:
